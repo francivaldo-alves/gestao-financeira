@@ -1,26 +1,45 @@
-# Estágio 1: Build do Frontend
-FROM node:18-alpine AS client-build
+# =====================================================
+# 🚀 STAGE 1 — Build do Frontend (Vite + React)
+# =====================================================
+FROM node:22-alpine AS client-build
+
+WORKDIR /app
+
+# Copiar dependências do frontend
+COPY client/package*.json ./client/
+
 WORKDIR /app/client
-COPY client/package*.json ./
 RUN npm install
-COPY client/ ./
+
+# Copiar código do frontend
+COPY client/ ./ 
+
+# Gerar build de produção
 RUN npm run build
 
-# Estágio 2: Setup do Backend e Runtime
-FROM node:18-alpine
+
+
+# =====================================================
+# 🚀 STAGE 2 — Backend + Frontend Build Copiado
+# =====================================================
+FROM node:22-alpine
+
 WORKDIR /app
+
+# Copiar arquivos do backend
 COPY server/package*.json ./server/
+
 WORKDIR /app/server
-RUN npm install --production
-COPY server/ ./
+RUN npm install
 
-# Copia o build do frontend para o backend servir
-COPY --from=client-build /app/client/dist ../client/dist
+# Copiar restante do backend
+COPY server/ ./ 
 
-# Variáveis de ambiente padrão (podem ser sobrescritas)
-ENV NODE_ENV=production
-ENV PORT=5000
+# Copiar build do frontend para dentro do backend (ex: /public)
+COPY --from=client-build /app/client/dist ./public
 
+# Expor porta
 EXPOSE 5000
 
-CMD ["node", "index.js"]
+# Comando de execução
+CMD ["npm", "start"]
