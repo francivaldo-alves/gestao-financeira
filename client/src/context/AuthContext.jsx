@@ -15,14 +15,10 @@ export const AuthProvider = ({ children }) => {
                 // 1. Configura o token no cabeçalho do Axios para requisições futuras
                 api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-                // 2. Tenta recuperar os dados do usuário (Opcional, mas recomendado)
+                // 2. Tenta recuperar os dados do usuário
                 try {
-                    // Se você tiver uma rota '/auth/me' ou '/users/profile', use aqui:
-                    // const response = await api.get('/auth/me'); 
-                    // setUser(response.data);
-
-                    // Por enquanto, assumimos que o token é válido:
-                    setUser({ token });
+                    const response = await api.get('/auth/me');
+                    setUser(response.data);
                 } catch (error) {
                     console.error("Token inválido ou expirado");
                     logout(); // Se o token for inválido, faz logout automático
@@ -50,8 +46,8 @@ export const AuthProvider = ({ children }) => {
         setUser(userData || { token });
     };
 
-    const register = async (email, password) => {
-        await api.post('/auth/register', { email, password });
+    const register = async (name, email, password) => {
+        await api.post('/auth/register', { name, email, password });
     };
 
     const logout = () => {

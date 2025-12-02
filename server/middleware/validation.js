@@ -12,6 +12,7 @@ const validate = (req, res, next) => {
 };
 
 const registerValidation = [
+    check('name', 'O nome é obrigatório').not().isEmpty(),
     check('email', 'Inclua um e-mail válido').isEmail(),
     check('password', 'A senha deve ter 6 ou mais caracteres').isLength({ min: 6 })
 ];

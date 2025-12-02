@@ -7,10 +7,23 @@ const sendEmail = require('../utils/sendEmail');
 const { validate, registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation } = require("../middleware/validation");
 
 const router = express.Router();
+const auth = require("../middleware/auth");
+
+router.get("/me", auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'name', 'email'] // Exclude password
+    });
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar usuário" });
+  }
+});
 
 router.post("/register", registerValidation, validate, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
@@ -21,6 +34,7 @@ router.post("/register", registerValidation, validate, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = await User.create({
+      name,
       email,
       password: hashedPassword,
     });
@@ -49,7 +63,14 @@ router.post("/login", loginValidation, validate, async (req, res) => {
       expiresIn: "1h",
     });
 
-    res.json({ token });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -160,6 +181,7 @@ router.post("/google", async (req, res) => {
       const hashedPassword = await bcrypt.hash(randomPassword, salt);
 
       user = await User.create({
+        name: email.split('@')[0], // Use part of email as name
         email,
         password: hashedPassword,
       });
