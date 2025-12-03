@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   app:
     build: .
@@ -58,7 +60,8 @@ services:
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+      - ./init-letsencrypt.sh:/init-letsencrypt.sh
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do /init-letsencrypt.sh; sleep 12h & wait $${!}; done;'"
     networks:
       - financ-network
 
@@ -68,5 +71,4 @@ networks:
 
 volumes:
   postgres_data:
-
 
