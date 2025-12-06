@@ -7,6 +7,36 @@ const ReceiptUpload = ({ onScanComplete }) => {
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
 
+    const preprocessImage = (file) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                // Grayscale & Contrast
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    // Increase contrast
+                    const factor = 1.2; // Contrast factor
+                    const color = factor * (avg - 128) + 128;
+                    data[i] = color;     // Red
+                    data[i + 1] = color; // Green
+                    data[i + 2] = color; // Blue
+                }
+                ctx.putImageData(imageData, 0, 0);
+                resolve(canvas.toDataURL('image/jpeg'));
+            };
+        });
+    };
+
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -15,8 +45,11 @@ const ReceiptUpload = ({ onScanComplete }) => {
         setProgress(0);
 
         try {
+            // Pre-process image for better OCR
+            const processedImage = await preprocessImage(file);
+
             const result = await Tesseract.recognize(
-                file,
+                processedImage,
                 'por', // Portuguese
                 {
                     logger: m => {
@@ -43,66 +76,98 @@ const ReceiptUpload = ({ onScanComplete }) => {
         let amount = '';
         let date = '';
         let description = '';
+        let category = '';
 
-        // Regex patterns
-        // Matches R$ 10,00 or 10,00 or 10.00
-        const amountRegex = /(?:R\$|TOTAL|VALOR|PAGAR)\s*[:.]?\s*(\d+[.,]\d{2})/i;
-        // Matches DD/MM/YYYY or YYYY-MM-DD
-        const dateRegex = /(\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2})/;
+        // Improved Regex patterns
+        const dateRegex = /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2,4})/;
 
-        // Try to find total amount (usually near the bottom, but we scan all)
-        // We look for the largest number that looks like a price, or lines with "Total"
+        // Keywords for categorization
+        const categories = {
+            'food': ['restaurante', 'lanchonete', 'ifood', 'burger', 'pizza', 'sushi', 'padaria', 'mercado', 'atacadista'],
+            'transport': ['uber', '99', 'taxi', 'posto', 'combustivel', 'gasolina', 'estacionamento'],
+            'shopping': ['loja', 'magazine', 'amazon', 'shopee', 'shopping'],
+            'health': ['farmacia', 'drogaria', 'medico', 'hospital', 'clinica'],
+            'services': ['vivo', 'claro', 'tim', 'oi', 'net', 'internet', 'luz', 'agua', 'energia']
+        };
+
         const amountsFound = [];
 
         lines.forEach(line => {
-            // Date
+            const lowerLine = line.toLowerCase();
+
+            // Date Detection
             if (!date) {
                 const dateMatch = line.match(dateRegex);
                 if (dateMatch) {
-                    // Convert DD/MM/YYYY to YYYY-MM-DD for input
-                    const parts = dateMatch[1].split('/');
-                    if (parts.length === 3) {
-                        date = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                    } else {
-                        date = dateMatch[1];
+                    let day = dateMatch[1];
+                    let month = dateMatch[2];
+                    let year = dateMatch[3];
+
+                    if (year.length === 2) year = '20' + year;
+
+                    // Basic validation
+                    if (parseInt(day) <= 31 && parseInt(month) <= 12) {
+                        date = `${year}-${month}-${day}`;
                     }
                 }
             }
 
-            // Amount candidates
+            // Category Detection
+            if (!category) {
+                for (const [catKey, keywords] of Object.entries(categories)) {
+                    if (keywords.some(k => lowerLine.includes(k))) {
+                        category = catKey;
+                        break;
+                    }
+                }
+            }
+
+            // Amount Detection
+            // Look for numbers with 2 decimal places
             const amountMatch = line.match(/(\d+[.,]\d{2})/);
             if (amountMatch) {
-                // Normalize 1.000,00 -> 1000.00
-                let valStr = amountMatch[1].replace('.', '').replace(',', '.');
+                // Clean string: remove non-numeric except . and ,
+                let valStr = amountMatch[1].replace(/[^\d.,]/g, '');
+                // Normalize: 1.000,00 -> 1000.00
+                valStr = valStr.replace('.', '').replace(',', '.');
+
                 let val = parseFloat(valStr);
-                if (!isNaN(val)) {
-                    amountsFound.push({ val, line: line.toLowerCase() });
+
+                // Filter out unlikely amounts (e.g., dates misread as amounts, phone numbers)
+                if (!isNaN(val) && val > 0 && val < 100000) {
+                    // Boost score if line contains "Total"
+                    let score = val;
+                    if (lowerLine.includes('total') || lowerLine.includes('pagar') || lowerLine.includes('valor')) {
+                        score += 1000000; // High priority
+                    }
+                    amountsFound.push({ val, score, line: lowerLine });
                 }
             }
         });
 
-        // Heuristic for amount: prefer lines with "total" or "pagar", otherwise max value
-        const totalLine = amountsFound.find(a => a.line.includes('total') || a.line.includes('pagar') || a.line.includes('valor'));
-        if (totalLine) {
-            amount = totalLine.val;
-        } else if (amountsFound.length > 0) {
-            // Fallback: Max value found (risky but often correct for receipts)
-            amount = Math.max(...amountsFound.map(a => a.val));
+        // Select best amount
+        if (amountsFound.length > 0) {
+            amountsFound.sort((a, b) => b.score - a.score);
+            amount = amountsFound[0].val;
         }
 
-        // Description: First non-empty line that isn't a date or purely numeric
+        // Description: First meaningful line
         for (let line of lines) {
             const cleanLine = line.trim();
-            if (cleanLine && cleanLine.length > 3 && !cleanLine.match(dateRegex) && isNaN(parseFloat(cleanLine))) {
-                description = cleanLine.substring(0, 30); // Limit length
-                break;
+            if (cleanLine && cleanLine.length > 3 && !cleanLine.match(dateRegex) && isNaN(parseFloat(cleanLine.replace(',', '.')))) {
+                // Ignore common receipt header words
+                if (!['cnpj', 'cpf', 'extrato', 'cupom', 'fiscal'].some(w => cleanLine.toLowerCase().includes(w))) {
+                    description = cleanLine.substring(0, 30);
+                    break;
+                }
             }
         }
 
         onScanComplete({
             amount: amount ? amount.toString() : '',
-            date: date || '',
-            description: description || 'Despesa detectada'
+            date: date || new Date().toISOString().split('T')[0], // Default to today if not found
+            description: description || 'Despesa detectada',
+            category: category || ''
         });
     };
 
