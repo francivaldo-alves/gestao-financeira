@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import Tesseract from 'tesseract.js';
+import jsQR from 'jsqr';
 
 const ReceiptUpload = ({ onScanComplete }) => {
     const [scanning, setScanning] = useState(false);
@@ -19,20 +20,30 @@ const ReceiptUpload = ({ onScanComplete }) => {
                 ctx.drawImage(img, 0, 0);
 
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
 
-                // Grayscale & Contrast
+                // Try to read QR Code before modifying the image
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                let qrData = null;
+                if (code) {
+                    console.log("QR Code Found:", code.data);
+                    qrData = code.data;
+                }
+
+                const data = imageData.data;
+                // Grayscale & Contrast (for OCR)
                 for (let i = 0; i < data.length; i += 4) {
                     const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    // Increase contrast
-                    const factor = 1.2; // Contrast factor
+                    const factor = 1.2;
                     const color = factor * (avg - 128) + 128;
-                    data[i] = color;     // Red
-                    data[i + 1] = color; // Green
-                    data[i + 2] = color; // Blue
+                    data[i] = color;
+                    data[i + 1] = color;
+                    data[i + 2] = color;
                 }
                 ctx.putImageData(imageData, 0, 0);
-                resolve(canvas.toDataURL('image/jpeg'));
+                resolve({
+                    processedImage: canvas.toDataURL('image/jpeg'),
+                    qrData
+                });
             };
         });
     };
@@ -45,12 +56,12 @@ const ReceiptUpload = ({ onScanComplete }) => {
         setProgress(0);
 
         try {
-            // Pre-process image for better OCR
-            const processedImage = await preprocessImage(file);
+            // Pre-process image and check for QR
+            const { processedImage, qrData } = await preprocessImage(file);
 
             const result = await Tesseract.recognize(
                 processedImage,
-                'por', // Portuguese
+                'por',
                 {
                     logger: m => {
                         if (m.status === 'recognizing text') {
@@ -62,7 +73,7 @@ const ReceiptUpload = ({ onScanComplete }) => {
 
             const text = result.data.text;
             console.log('OCR Result:', text);
-            parseReceiptData(text);
+            parseReceiptData(text, qrData);
         } catch (error) {
             console.error('OCR Error:', error);
             alert('Erro ao ler a imagem. Tente novamente com uma imagem mais clara.');
