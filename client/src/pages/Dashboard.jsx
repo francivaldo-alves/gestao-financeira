@@ -7,11 +7,15 @@ import SummaryCards from '../components/SummaryCards';
 import FilterBar from '../components/FilterBar';
 import TransactionList from '../components/TransactionList';
 import Navbar from '../components/Navbar';
+import DateFilter from '../components/DateFilter';
+import TopExpenses from '../components/TopExpenses';
 
 const Dashboard = () => {
     const { logout } = useContext(AuthContext);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
     // --- ESTADOS PARA OS MODAIS DE CONFIRMAÇÃO ---
     const [transactionToDelete, setTransactionToDelete] = useState(null);
@@ -39,7 +43,9 @@ const Dashboard = () => {
     const fetchTransactions = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get('/transactions');
+            const response = await api.get('/transactions', {
+                params: { month: currentMonth, year: currentYear }
+            });
             setTransactions(response.data);
         } catch (error) {
             console.error('Erro ao buscar transações:', error);
@@ -47,7 +53,7 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentMonth, currentYear]);
 
     useEffect(() => {
         fetchTransactions();
@@ -114,12 +120,13 @@ const Dashboard = () => {
     const confirmCompleteSeries = async () => {
         if (!recurrenceToComplete) return;
 
-        const prev = [...transactions];
-        const prevInclude = includeCompleted;
-
-        // Atualização Otimista
-        setTransactions(prevState => prevState.map(item => item.recurrenceId === recurrenceToComplete ? { ...item, completed: true } : item));
-        setIncludeCompleted(true);
+        // Optimistic update
+        setTransactions(prevState => {
+            if (!includeCompleted) {
+                return prevState.filter(item => item.recurrenceId !== recurrenceToComplete);
+            }
+            return prevState.map(item => item.recurrenceId === recurrenceToComplete ? { ...item, completed: true } : item);
+        });
 
         try {
             await api.put(`/transactions/recurrence/${recurrenceToComplete}/complete`, { completed: true });
@@ -127,8 +134,7 @@ const Dashboard = () => {
             showToast('Todas recorrências marcadas como concluídas', 'success');
         } catch (err) {
             console.error('Erro ao marcar recorrência como concluída', err);
-            setTransactions(prev);
-            setIncludeCompleted(prevInclude);
+            fetchTransactions(); // Rollback via fetch
             showToast('Erro ao marcar recorrência', 'error');
         } finally {
             setRecurrenceToComplete(null);
@@ -156,17 +162,21 @@ const Dashboard = () => {
     };
 
     const handleToggleComplete = async (t, checked) => {
-        const prevInclude = includeCompleted;
-        setTransactions(prev => prev.map(item => item.id === t.id ? { ...item, completed: checked } : item));
-        if (checked) setIncludeCompleted(true);
+        // Optimistic update
+        setTransactions(prev => {
+            if (checked && !includeCompleted) {
+                return prev.filter(item => item.id !== t.id);
+            }
+            return prev.map(item => item.id === t.id ? { ...item, completed: checked } : item);
+        });
+
         try {
             await api.put(`/transactions/${t.id}`, { completed: checked });
             fetchTransactions();
             showToast(checked ? 'Marcado como concluído' : 'Marcação removida', 'success');
         } catch (err) {
             console.error('Erro ao marcar concluído', err);
-            setTransactions(prev => prev.map(item => item.id === t.id ? { ...item, completed: !checked } : item));
-            setIncludeCompleted(prevInclude);
+            fetchTransactions();
             showToast('Erro ao atualizar status', 'error');
         }
     };
@@ -200,7 +210,13 @@ const Dashboard = () => {
                         <h1 className="display-6 fw-bold text-dark mb-0">Visão Geral</h1>
                         <p className="text-muted mt-1 mb-0">Gerencie suas finanças</p>
                     </div>
-                    <div className="d-flex align-items-center gap-2">
+                    <div className="d-flex align-items-center gap-3 flex-wrap">
+                        <DateFilter
+                            currentMonth={currentMonth}
+                            currentYear={currentYear}
+                            onMonthChange={setCurrentMonth}
+                            onYearChange={setCurrentYear}
+                        />
                         <button
                             onClick={() => {
                                 setEditingId(null);
@@ -216,6 +232,8 @@ const Dashboard = () => {
                 </div>
 
                 <SummaryCards balance={balance} totalIncome={totalIncome} totalExpense={totalExpense} />
+
+                <TopExpenses transactions={transactions} />
 
                 <TransactionModal
                     isOpen={isModalOpen}

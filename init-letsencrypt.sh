@@ -56,6 +56,11 @@ echo "### Starting nginx ..."
 $compose_cmd up --force-recreate -d nginx
 
 # Remove dummy e tenta gerar certificados reais
+echo "### Deleting dummy certificate for ${domains[*]} ..."
+rm -Rf "$data_path/conf/live/${domains[0]}"
+rm -Rf "$data_path/conf/archive/${domains[0]}"
+rm -Rf "$data_path/conf/renewal/${domains[0]}.conf"
+
 echo "### Requesting Let's Encrypt certificate for ${domains[*]} ..."
 domain_args=""
 for domain in "${domains[@]}"; do
