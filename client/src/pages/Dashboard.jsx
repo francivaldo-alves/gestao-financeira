@@ -8,7 +8,6 @@ import FilterBar from '../components/FilterBar';
 import TransactionList from '../components/TransactionList';
 import Navbar from '../components/Navbar';
 import DateFilter from '../components/DateFilter';
-import TopExpenses from '../components/TopExpenses';
 
 const Dashboard = () => {
     const { logout } = useContext(AuthContext);
@@ -218,6 +217,13 @@ const Dashboard = () => {
                             onYearChange={setCurrentYear}
                         />
                         <button
+                            onClick={() => window.location.href = '/top-expenses'}
+                            className="btn btn-outline-primary rounded-pill px-4 shadow-sm"
+                        >
+                            <i className="bi bi-graph-up me-2"></i>
+                            Ver Gráfico
+                        </button>
+                        <button
                             onClick={() => {
                                 setEditingId(null);
                                 setInitialFormData({ description: '', amount: '', type: 'expense', date: '', category: '', paymentMethod: '', note: '', isRecurring: false, recurrenceMonths: 12 });
@@ -232,8 +238,6 @@ const Dashboard = () => {
                 </div>
 
                 <SummaryCards balance={balance} totalIncome={totalIncome} totalExpense={totalExpense} />
-
-
 
                 <TransactionModal
                     isOpen={isModalOpen}
