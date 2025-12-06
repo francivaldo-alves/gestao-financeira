@@ -38,11 +38,13 @@ const TopExpensesPage = () => {
                     <div className="d-flex align-items-center gap-3">
                         <button
                             onClick={() => navigate('/')}
-                            className="btn btn-link text-decoration-none text-secondary fw-medium d-flex align-items-center gap-2 px-0 hover-opacity-75"
-                            style={{ transition: 'all 0.2s ease' }}
+                            className="btn btn-white border shadow-sm rounded-pill px-3 d-flex align-items-center gap-2 text-secondary fw-bold"
+                            style={{ transition: 'transform 0.2s' }}
+                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                         >
-                            <i className="bi bi-arrow-left fs-5"></i>
-                            <span className="fs-6">Voltar</span>
+                            <i className="bi bi-arrow-left"></i>
+                            Voltar
                         </button>
                         <h1 className="h3 fw-bold text-dark mb-0">Análise de Gastos</h1>
                     </div>
