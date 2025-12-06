@@ -209,31 +209,33 @@ const Dashboard = () => {
                         <h1 className="display-6 fw-bold text-dark mb-0">Visão Geral</h1>
                         <p className="text-muted mt-1 mb-0">Gerencie suas finanças</p>
                     </div>
-                    <div className="d-flex align-items-center gap-3 flex-wrap">
+                    <div className="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-3 flex-wrap">
                         <DateFilter
                             currentMonth={currentMonth}
                             currentYear={currentYear}
                             onMonthChange={setCurrentMonth}
                             onYearChange={setCurrentYear}
                         />
-                        <button
-                            onClick={() => window.location.href = '/maiores-gastos'}
-                            className="btn btn-outline-primary rounded-pill px-4 shadow-sm"
-                        >
-                            <i className="bi bi-graph-up me-2"></i>
-                            Ver Gráfico
-                        </button>
-                        <button
-                            onClick={() => {
-                                setEditingId(null);
-                                setInitialFormData({ description: '', amount: '', type: 'expense', date: '', category: '', paymentMethod: '', note: '', isRecurring: false, recurrenceMonths: 12 });
-                                setIsModalOpen(true);
-                            }}
-                            className="btn btn-primary rounded-pill px-4 shadow-sm"
-                        >
-                            <i className="bi bi-plus-lg me-2"></i>
-                            Nova Transação
-                        </button>
+                        <div className="d-flex gap-2 w-100 w-md-auto">
+                            <button
+                                onClick={() => window.location.href = '/maiores-gastos'}
+                                className="btn btn-outline-primary rounded-pill px-4 shadow-sm flex-fill flex-md-grow-0"
+                            >
+                                <i className="bi bi-graph-up me-2"></i>
+                                Ver Gráfico
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setInitialFormData({ description: '', amount: '', type: 'expense', date: '', category: '', paymentMethod: '', note: '', isRecurring: false, recurrenceMonths: 12 });
+                                    setIsModalOpen(true);
+                                }}
+                                className="btn btn-primary rounded-pill px-4 shadow-sm flex-fill flex-md-grow-0 text-nowrap"
+                            >
+                                <i className="bi bi-plus-lg me-2"></i>
+                                Nova Transação
+                            </button>
+                        </div>
                     </div>
                 </div>
 

@@ -25,14 +25,17 @@ router.get("/", async (req, res) => {
 
       if (month === 'all') {
         startDate = new Date(year, 0, 1);
-        endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+        // Start of next year
+        endDate = new Date(parseInt(year) + 1, 0, 1);
       } else {
         startDate = new Date(year, month - 1, 1);
-        endDate = new Date(year, month, 0, 23, 59, 59, 999);
+        // Start of next month
+        endDate = new Date(year, month, 1);
       }
 
       where.date = {
-        [Op.between]: [startDate, endDate],
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
       };
     }
 

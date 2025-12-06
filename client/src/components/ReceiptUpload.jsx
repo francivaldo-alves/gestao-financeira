@@ -6,73 +6,149 @@ const ReceiptUpload = ({ onScanComplete }) => {
     const [scanning, setScanning] = useState(false);
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState('');
+    const [error, setError] = useState(null);
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
 
+    // Função auxiliar para ler a orientação EXIF (0x0112)
+    const getOrientation = (file, callback) => {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            try {
+                const view = new DataView(event.target.result);
+                if (view.getUint16(0, false) !== 0xFFD8) return callback(-2);
+                let length = view.byteLength, offset = 2;
+                while (offset < length) {
+                    if (view.getUint16(offset + 2, false) <= 8) return callback(-1);
+                    let marker = view.getUint16(offset, false);
+                    offset += 2;
+                    if (marker === 0xFFE1) {
+                        if (view.getUint32(offset += 2, false) !== 0x45786966) return callback(-1);
+                        let little = view.getUint16(offset += 6, false) === 0x4949;
+                        offset += view.getUint32(offset + 4, little);
+                        let tags = view.getUint16(offset, little);
+                        offset += 2;
+                        for (let i = 0; i < tags; i++)
+                            if (view.getUint16(offset + (i * 12), little) === 0x0112)
+                                return callback(view.getUint16(offset + (i * 12) + 8, little));
+                    } else if ((marker & 0xFF00) !== 0xFF00) break;
+                    else offset += view.getUint16(offset, false);
+                }
+                return callback(-1);
+            } catch (err) {
+                console.warn('Error reading EXIF, defaulting to NO-ROTATION:', err);
+                return callback(-1);
+            }
+        };
+        reader.onerror = () => {
+            console.warn('FileReader error in getOrientation, defaulting to NO-ROTATION');
+            return callback(-1);
+        };
+        reader.readAsArrayBuffer(file.slice(0, 64 * 1024));
+    };
+
     const preprocessImage = (file) => {
         return new Promise((resolve, reject) => {
-            setStatusText('Processando imagem...');
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
+            setStatusText('Processando imagem (orientação/resize)...');
 
-                // Resize if too large (improves performance and avoids crashes on mobile)
-                const MAX_WIDTH = 1024; // Reduced to 1024 for better mobile stability
-                let width = img.width;
-                let height = img.height;
+            getOrientation(file, (orientation) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        setStatusText('Redimensionando imagem...');
+                        URL.revokeObjectURL(img.src);
 
-                if (width > MAX_WIDTH) {
-                    setStatusText('Redimensionando...');
-                    height = (MAX_WIDTH / width) * height;
-                    width = MAX_WIDTH;
-                }
+                        if (img.width === 0 || img.height === 0) {
+                            return reject(new Error("Imagem inválida (dimensões zeradas)"));
+                        }
 
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
 
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const MAX_WIDTH = 1024;
+                        let width = img.width;
+                        let height = img.height;
 
-                // Try to read QR Code from the resized image
-                setStatusText('Verificando QR Code...');
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-                let qrData = null;
-                if (code) {
-                    console.log("QR Code Found:", code.data);
-                    qrData = code.data;
-                }
+                        if (width > MAX_WIDTH) {
+                            height = (MAX_WIDTH / width) * height;
+                            width = MAX_WIDTH;
+                        }
 
-                const data = imageData.data;
-                // Grayscale & Contrast (for OCR)
-                setStatusText('Otimizando para leitura...');
-                for (let i = 0; i < data.length; i += 4) {
-                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    // Increase contrast
-                    const factor = 1.3;
-                    const color = factor * (avg - 128) + 128;
-                    data[i] = color;
-                    data[i + 1] = color;
-                    data[i + 2] = color;
-                }
-                ctx.putImageData(imageData, 0, 0);
-                resolve({
-                    processedImage: canvas.toDataURL('image/jpeg', 0.8), // Lower quality slightly for speed
-                    qrData
-                });
-            };
-            img.onerror = (err) => reject(err);
-            img.src = URL.createObjectURL(file);
+                        // Ajustar dimensões do canvas baseado na orientação
+                        if ([5, 6, 7, 8].indexOf(orientation) > -1) {
+                            canvas.width = height;
+                            canvas.height = width;
+                        } else {
+                            canvas.width = width;
+                            canvas.height = height;
+                        }
+
+                        // Aplicar rotação
+                        switch (orientation) {
+                            case 2: ctx.transform(-1, 0, 0, 1, width, 0); break;
+                            case 3: ctx.transform(-1, 0, 0, -1, width, height); break;
+                            case 4: ctx.transform(1, 0, 0, -1, 0, height); break;
+                            case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+                            case 6: ctx.transform(0, 1, -1, 0, height, 0); break;
+                            case 7: ctx.transform(0, -1, -1, 0, height, width); break;
+                            case 8: ctx.transform(0, -1, 1, 0, 0, width); break;
+                            default: break;
+                        }
+
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                        // Try to read QR Code from the resized image
+                        setStatusText('Verificando QR Code...');
+                        const code = jsQR(imageData.data, imageData.width, imageData.height);
+                        let qrData = null;
+                        if (code) {
+                            console.log("QR Code Found:", code.data);
+                            qrData = code.data;
+                        }
+
+                        const data = imageData.data;
+                        // Otimização básica de contraste para OCR
+                        // setStatusText('Otimizando para leitura...');
+                        for (let i = 0; i < data.length; i += 4) {
+                            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                            const factor = 1.3;
+                            const color = factor * (avg - 128) + 128;
+                            data[i] = color;
+                            data[i + 1] = color;
+                            data[i + 2] = color;
+                        }
+                        ctx.putImageData(imageData, 0, 0);
+                        resolve({
+                            processedImage: canvas.toDataURL('image/jpeg', 0.8),
+                            qrData
+                        });
+                    } catch (err) {
+                        console.error("Error processing image inside onload:", err);
+                        reject(err);
+                    }
+                };
+                img.onerror = () => reject(new Error("Falha ao carregar a imagem. Arquivo corrompido ou formato não suportado."));
+                img.src = URL.createObjectURL(file);
+            });
         });
     };
+
 
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        if (file.size > 15 * 1024 * 1024) {
+            setError("Arquivo muito grande (máximo 15MB). Por favor, escolha uma imagem menor.");
+            return;
+        }
+
         setScanning(true);
         setProgress(0);
-        setStatusText('Iniciando...');
+        setStatusText('Lendo arquivo...');
+        setError(null);
 
         try {
             // Pre-process image and check for QR
@@ -100,18 +176,24 @@ const ReceiptUpload = ({ onScanComplete }) => {
             parseReceiptData(text, qrData);
         } catch (error) {
             console.error('OCR Error:', error);
-            alert(`Erro ao ler a imagem: ${error.message || error}`);
+            const msg = error.message || (typeof error === 'string' ? error : 'Erro desconhecido ao processar imagem');
+            setError(`Erro ao ler a imagem: ${msg}`);
         } finally {
             setScanning(false);
             setStatusText('');
-            // Reset inputs to allow selecting the same file again if needed
             if (fileInputRef.current) fileInputRef.current.value = '';
             if (cameraInputRef.current) cameraInputRef.current.value = '';
         }
     };
 
     const parseReceiptData = (text, qrData) => {
-        const lines = text.split('\n');
+        // Cleaning text: replace common OCR errors
+        const cleanText = text
+            .replace(/\|/g, '1') // Pipe to 1
+            .replace(/O/g, '0')  // Big O to 0 (contextual, but safe for numbers)
+            .replace(/o/g, '0'); // Little o to 0
+
+        const lines = cleanText.split('\n');
         let amount = '';
         let date = '';
         let description = '';
@@ -119,22 +201,27 @@ const ReceiptUpload = ({ onScanComplete }) => {
         let paymentMethod = '';
 
         // Improved Regex patterns
+        // Date: Matches DD/MM/YYYY, DD-MM-YY, etc.
         const dateRegex = /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2,4})/;
+
+        // Amount: R$ 10,00, 10.00, 10,00 (flexible with spaces and currency symbol)
+        // Look for lines with 'TOTAL', 'VALOR', 'PAGAR' specifically for high confidence
+        const currencyRegex = /(?:R\$)?\s*(\d{1,3}(?:\.\d{3})*(?:,\d{2})|\d{1,3}(?:,\d{3})*(?:\.\d{2}))/i;
 
         // Keywords for categorization
         const categories = {
-            'alimentacao': ['restaurante', 'lanchonete', 'ifood', 'burger', 'pizza', 'sushi', 'padaria', 'mercado', 'atacadista', 'supermercado', 'food'],
-            'transporte': ['uber', '99', 'taxi', 'posto', 'combustivel', 'gasolina', 'estacionamento'],
-            'lazer': ['shopping', 'cinema', 'teatro', 'show', 'netflix', 'spotify', 'amazon', 'shopee', 'loja', 'magazine'],
-            'saude': ['farmacia', 'drogaria', 'medico', 'hospital', 'clinica'],
-            'moradia': ['luz', 'agua', 'energia', 'aluguel', 'condominio', 'internet', 'vivo', 'claro', 'tim', 'oi', 'net']
+            'alimentacao': ['restaurante', 'lanchonete', 'ifood', 'burger', 'pizza', 'sushi', 'padaria', 'mercado', 'atacadista', 'supermercado', 'food', 'buffet', 'grill'],
+            'transporte': ['uber', '99', 'taxi', 'posto', 'combustivel', 'gasolina', 'estacionamento', 'aluguel', 'ipva'],
+            'lazer': ['shopping', 'cinema', 'teatro', 'show', 'netflix', 'spotify', 'amazon', 'shopee', 'loja', 'magazine', 'livraria'],
+            'saude': ['farmacia', 'drogaria', 'medico', 'hospital', 'clinica', 'exame', 'laboratorio', 'dentista'],
+            'moradia': ['luz', 'agua', 'energia', 'aluguel', 'condominio', 'internet', 'vivo', 'claro', 'tim', 'oi', 'net', 'eletropaulo', 'sabesp']
         };
 
         const paymentKeywords = {
             'pix': ['pix'],
-            'card': ['cartao', 'credito', 'debito', 'visa', 'master'],
-            'cash': ['dinheiro', 'especie'],
-            'boleto': ['boleto']
+            'card': ['cartao', 'credito', 'debito', 'visa', 'master', 'elo', 'amex'],
+            'cash': ['dinheiro', 'especie', 'troco'],
+            'boleto': ['boleto', 'bank']
         };
 
         const amountsFound = [];
@@ -142,17 +229,22 @@ const ReceiptUpload = ({ onScanComplete }) => {
         lines.forEach(line => {
             const lowerLine = line.toLowerCase();
 
+            // Fix common char errors in line for processing
+            const safeLine = lowerLine.replace(/o/g, '0').replace(/l/g, '1');
+
             // Date Detection
             if (!date) {
-                const dateMatch = line.match(dateRegex);
+                const dateMatch = safeLine.match(dateRegex);
                 if (dateMatch) {
                     let day = dateMatch[1];
                     let month = dateMatch[2];
                     let year = dateMatch[3];
 
+                    // Year normalization
                     if (year.length === 2) year = '20' + year;
 
-                    if (parseInt(day) <= 31 && parseInt(month) <= 12) {
+                    // Basic validation
+                    if (parseInt(day) >= 1 && parseInt(day) <= 31 && parseInt(month) >= 1 && parseInt(month) <= 12) {
                         date = `${year}-${month}-${day}`;
                     }
                 }
@@ -179,18 +271,39 @@ const ReceiptUpload = ({ onScanComplete }) => {
             }
 
             // Amount Detection
-            const amountMatch = line.match(/(\d+[.,]\d{2})/);
-            if (amountMatch) {
-                let valStr = amountMatch[1].replace(/[^\d.,]/g, '');
-                valStr = valStr.replace('.', '').replace(',', '.');
-                let val = parseFloat(valStr);
-
-                if (!isNaN(val) && val > 0 && val < 100000) {
-                    let score = val;
-                    if (lowerLine.includes('total') || lowerLine.includes('pagar') || lowerLine.includes('valor')) {
-                        score += 1000000;
+            // Prioritize lines with "Total"
+            if (lowerLine.includes('total') || lowerLine.includes('pagar') || lowerLine.includes('valor')) {
+                const amountMatch = line.match(currencyRegex);
+                if (amountMatch) {
+                    // Extract number, careful with thousands separators
+                    let valStr = amountMatch[1];
+                    // Normalize to dot decimal
+                    if (valStr.includes(',') && valStr.includes('.')) {
+                        // mixed case like 1.000,00 -> remove dot, replace comma
+                        valStr = valStr.replace(/\./g, '').replace(',', '.');
+                    } else if (valStr.includes(',')) {
+                        valStr = valStr.replace(',', '.');
                     }
-                    amountsFound.push({ val, score, line: lowerLine });
+
+                    let val = parseFloat(valStr);
+                    if (!isNaN(val)) {
+                        amountsFound.push({ val, score: 100, line: lowerLine });
+                    }
+                }
+            } else {
+                // Fallback: look for generic currency patterns
+                const amountMatch = line.match(currencyRegex);
+                if (amountMatch) {
+                    let valStr = amountMatch[1].replace(/\./g, '').replace(',', '.'); // simplified assumption for fallback
+                    // Try smarter parsing if it fails
+                    if (amountMatch[1].includes(',')) {
+                        valStr = amountMatch[1].replace(/\./g, '').replace(',', '.');
+                    }
+
+                    let val = parseFloat(valStr);
+                    if (!isNaN(val) && val > 0 && val < 50000) {
+                        amountsFound.push({ val, score: 1, line: lowerLine });
+                    }
                 }
             }
         });
@@ -255,6 +368,16 @@ const ReceiptUpload = ({ onScanComplete }) => {
                 className="d-none"
             />
 
+            {error && (
+                <div className="alert alert-danger alert-dismissible fade show p-2 small mb-2" role="alert">
+                    <div className="d-flex align-items-center gap-2">
+                        <i className="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                        <div>{error}</div>
+                    </div>
+                    <button type="button" className="btn-close" onClick={() => setError(null)} aria-label="Close" style={{ padding: '0.75rem' }}></button>
+                </div>
+            )}
+
             <div className="d-flex gap-2">
                 <button
                     type="button"
@@ -286,6 +409,7 @@ const ReceiptUpload = ({ onScanComplete }) => {
                     <small className="text-muted">{statusText}</small>
                 </div>
             )}
+
         </div>
     );
 };

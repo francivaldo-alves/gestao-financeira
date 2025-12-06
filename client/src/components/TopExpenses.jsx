@@ -26,11 +26,11 @@ const TopExpenses = ({ transactions }) => {
             <div className="card-body p-4">
                 <h5 className="card-title fw-bold text-secondary mb-4">Maiores Gastos do Mês</h5>
                 <div className="d-flex justify-content-center">
-                    <div style={{ width: '100%', maxWidth: `${topExpenses.length * 180}px`, height: 300 }}>
+                    <div style={{ width: '100%', height: 400 }}>
                         <ResponsiveContainer>
                             <BarChart
                                 data={topExpenses}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                                 <XAxis
@@ -39,15 +39,18 @@ const TopExpenses = ({ transactions }) => {
                                     axisLine={false}
                                     tickLine={false}
                                     interval={0}
-                                    tickFormatter={(value) => value.length > 10 ? `${value.substring(0, 10)}...` : value}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    height={60}
+                                    tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
                                 />
                                 <YAxis hide />
                                 <Tooltip
-                                    cursor={{ fill: 'transparent' }}
+                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                     formatter={(value) => [`R$ ${value.toFixed(2)}`, 'Valor']}
                                 />
-                                <Bar dataKey="amount" radius={[8, 8, 0, 0]} maxBarSize={120}>
+                                <Bar dataKey="amount" radius={[8, 8, 0, 0]} maxBarSize={60}>
                                     {topExpenses.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
