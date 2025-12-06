@@ -2,6 +2,7 @@ import React from 'react';
 
 const DateFilter = ({ currentMonth, currentYear, onMonthChange, onYearChange }) => {
     const months = [
+        { value: 'all', label: 'Todos' },
         { value: 1, label: 'Janeiro' },
         { value: 2, label: 'Fevereiro' },
         { value: 3, label: 'Março' },
@@ -24,7 +25,10 @@ const DateFilter = ({ currentMonth, currentYear, onMonthChange, onYearChange }) 
             <select
                 className="form-select form-select-sm rounded-pill shadow-sm border-0"
                 value={currentMonth}
-                onChange={(e) => onMonthChange(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    onMonthChange(val === 'all' ? 'all' : Number(val));
+                }}
                 style={{ width: '130px', cursor: 'pointer' }}
             >
                 {months.map(m => (
