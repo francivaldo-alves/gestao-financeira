@@ -38,10 +38,11 @@ const TopExpensesPage = () => {
                     <div className="d-flex align-items-center gap-3">
                         <button
                             onClick={() => navigate('/')}
-                            className="btn btn-light shadow-sm rounded-pill px-3 d-flex align-items-center gap-2 text-primary fw-bold border"
+                            className="btn btn-link text-decoration-none text-secondary fw-medium d-flex align-items-center gap-2 px-0 hover-opacity-75"
+                            style={{ transition: 'all 0.2s ease' }}
                         >
-                            <i className="bi bi-arrow-left"></i>
-                            Voltar
+                            <i className="bi bi-arrow-left fs-5"></i>
+                            <span className="fs-6">Voltar</span>
                         </button>
                         <h1 className="h3 fw-bold text-dark mb-0">Análise de Gastos</h1>
                     </div>
