@@ -29,6 +29,7 @@ export default function TransactionModal({ isOpen, onClose, initialForm, handleS
             date: data.date || prev.date,
             description: data.description || prev.description,
             category: data.category || prev.category,
+            paymentMethod: data.paymentMethod || prev.paymentMethod,
         }));
     };
 
