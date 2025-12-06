@@ -30,7 +30,7 @@ function App() {
             }
           />
           <Route
-            path="/top-expenses"
+            path="/maiores-gastos"
             element={
               <PrivateRoute>
                 <TopExpensesPage />

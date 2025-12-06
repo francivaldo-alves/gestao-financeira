@@ -217,7 +217,7 @@ const Dashboard = () => {
                             onYearChange={setCurrentYear}
                         />
                         <button
-                            onClick={() => window.location.href = '/top-expenses'}
+                            onClick={() => window.location.href = '/maiores-gastos'}
                             className="btn btn-outline-primary rounded-pill px-4 shadow-sm"
                         >
                             <i className="bi bi-graph-up me-2"></i>
