@@ -9,31 +9,44 @@ const ReceiptUpload = ({ onScanComplete }) => {
     const cameraInputRef = useRef(null);
 
     const preprocessImage = (file) => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const img = new Image();
-            img.src = URL.createObjectURL(file);
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+
+                // Resize if too large (improves performance and avoids crashes on mobile)
+                const MAX_WIDTH = 1024; // Reduced to 1024 for better mobile stability
+                let width = img.width;
+                let height = img.height;
+
+                if (width > MAX_WIDTH) {
+                    height = (MAX_WIDTH / width) * height;
+                    width = MAX_WIDTH;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
 
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-                // Try to read QR Code before modifying the image
+                // Try to read QR Code from the resized image
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
                 let qrData = null;
                 if (code) {
                     console.log("QR Code Found:", code.data);
                     qrData = code.data;
+                } else {
+                    console.log("No QR Code found in image.");
                 }
 
                 const data = imageData.data;
                 // Grayscale & Contrast (for OCR)
                 for (let i = 0; i < data.length; i += 4) {
                     const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    const factor = 1.2;
+                    // Increase contrast
+                    const factor = 1.3;
                     const color = factor * (avg - 128) + 128;
                     data[i] = color;
                     data[i + 1] = color;
@@ -41,10 +54,12 @@ const ReceiptUpload = ({ onScanComplete }) => {
                 }
                 ctx.putImageData(imageData, 0, 0);
                 resolve({
-                    processedImage: canvas.toDataURL('image/jpeg'),
+                    processedImage: canvas.toDataURL('image/jpeg', 0.8), // Lower quality slightly for speed
                     qrData
                 });
             };
+            img.onerror = (err) => reject(err);
+            img.src = URL.createObjectURL(file);
         });
     };
 
@@ -82,23 +97,31 @@ const ReceiptUpload = ({ onScanComplete }) => {
         }
     };
 
-    const parseReceiptData = (text) => {
+    const parseReceiptData = (text, qrData) => {
         const lines = text.split('\n');
         let amount = '';
         let date = '';
         let description = '';
         let category = '';
+        let paymentMethod = '';
 
         // Improved Regex patterns
         const dateRegex = /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2,4})/;
 
         // Keywords for categorization
         const categories = {
-            'food': ['restaurante', 'lanchonete', 'ifood', 'burger', 'pizza', 'sushi', 'padaria', 'mercado', 'atacadista'],
-            'transport': ['uber', '99', 'taxi', 'posto', 'combustivel', 'gasolina', 'estacionamento'],
-            'shopping': ['loja', 'magazine', 'amazon', 'shopee', 'shopping'],
-            'health': ['farmacia', 'drogaria', 'medico', 'hospital', 'clinica'],
-            'services': ['vivo', 'claro', 'tim', 'oi', 'net', 'internet', 'luz', 'agua', 'energia']
+            'alimentacao': ['restaurante', 'lanchonete', 'ifood', 'burger', 'pizza', 'sushi', 'padaria', 'mercado', 'atacadista', 'supermercado', 'food'],
+            'transporte': ['uber', '99', 'taxi', 'posto', 'combustivel', 'gasolina', 'estacionamento'],
+            'lazer': ['shopping', 'cinema', 'teatro', 'show', 'netflix', 'spotify', 'amazon', 'shopee', 'loja', 'magazine'],
+            'saude': ['farmacia', 'drogaria', 'medico', 'hospital', 'clinica'],
+            'moradia': ['luz', 'agua', 'energia', 'aluguel', 'condominio', 'internet', 'vivo', 'claro', 'tim', 'oi', 'net']
+        };
+
+        const paymentKeywords = {
+            'pix': ['pix'],
+            'card': ['cartao', 'credito', 'debito', 'visa', 'master'],
+            'cash': ['dinheiro', 'especie'],
+            'boleto': ['boleto']
         };
 
         const amountsFound = [];
@@ -116,7 +139,6 @@ const ReceiptUpload = ({ onScanComplete }) => {
 
                     if (year.length === 2) year = '20' + year;
 
-                    // Basic validation
                     if (parseInt(day) <= 31 && parseInt(month) <= 12) {
                         date = `${year}-${month}-${day}`;
                     }
@@ -133,52 +155,69 @@ const ReceiptUpload = ({ onScanComplete }) => {
                 }
             }
 
+            // Payment Method Detection
+            if (!paymentMethod) {
+                for (const [methodKey, keywords] of Object.entries(paymentKeywords)) {
+                    if (keywords.some(k => lowerLine.includes(k))) {
+                        paymentMethod = methodKey;
+                        break;
+                    }
+                }
+            }
+
             // Amount Detection
-            // Look for numbers with 2 decimal places
             const amountMatch = line.match(/(\d+[.,]\d{2})/);
             if (amountMatch) {
-                // Clean string: remove non-numeric except . and ,
                 let valStr = amountMatch[1].replace(/[^\d.,]/g, '');
-                // Normalize: 1.000,00 -> 1000.00
                 valStr = valStr.replace('.', '').replace(',', '.');
-
                 let val = parseFloat(valStr);
 
-                // Filter out unlikely amounts (e.g., dates misread as amounts, phone numbers)
                 if (!isNaN(val) && val > 0 && val < 100000) {
-                    // Boost score if line contains "Total"
                     let score = val;
                     if (lowerLine.includes('total') || lowerLine.includes('pagar') || lowerLine.includes('valor')) {
-                        score += 1000000; // High priority
+                        score += 1000000;
                     }
                     amountsFound.push({ val, score, line: lowerLine });
                 }
             }
         });
 
-        // Select best amount
         if (amountsFound.length > 0) {
             amountsFound.sort((a, b) => b.score - a.score);
             amount = amountsFound[0].val;
         }
 
-        // Description: First meaningful line
         for (let line of lines) {
             const cleanLine = line.trim();
             if (cleanLine && cleanLine.length > 3 && !cleanLine.match(dateRegex) && isNaN(parseFloat(cleanLine.replace(',', '.')))) {
-                // Ignore common receipt header words
-                if (!['cnpj', 'cpf', 'extrato', 'cupom', 'fiscal'].some(w => cleanLine.toLowerCase().includes(w))) {
+                if (!['cnpj', 'cpf', 'extrato', 'cupom', 'fiscal', 'ie:', 'inscri'].some(w => cleanLine.toLowerCase().includes(w))) {
                     description = cleanLine.substring(0, 30);
                     break;
                 }
             }
         }
 
+        if (qrData) {
+            console.log("Processing QR Data:", qrData);
+            if (!description) description = "Nota via QR Code";
+
+            if (!amount && qrData.includes('|')) {
+                const parts = qrData.split('|');
+                for (const part of parts) {
+                    if (part.match(/^\d+\.\d{2}$/)) {
+                        amount = part;
+                        break;
+                    }
+                }
+            }
+        }
+
         onScanComplete({
             amount: amount ? amount.toString() : '',
-            date: date || new Date().toISOString().split('T')[0], // Default to today if not found
+            date: date || new Date().toISOString().split('T')[0],
             description: description || 'Despesa detectada',
-            category: category || ''
+            category: category || '',
+            paymentMethod: paymentMethod || ''
         });
     };
 
