@@ -270,7 +270,9 @@ const ReceiptUpload = ({ onScanComplete }) => {
 
             {scanning && (
                 <div className="text-center mt-2">
-                    <small className="text-muted">Lendo nota... {progress}%</small>
+                    <div className="text-center mt-2">
+                        <small className="text-muted">{statusText}</small>
+                    </div>
                 </div>
             )}
         </div>
