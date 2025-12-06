@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
+import ReceiptUpload from './ReceiptUpload';
 
 export default function TransactionModal({ isOpen, onClose, initialForm, handleSubmit: onSubmit, editingId, handleCancelEdit }) {
     const [form, setForm] = useState(initialForm || {});
@@ -20,6 +21,15 @@ export default function TransactionModal({ isOpen, onClose, initialForm, handleS
             [name]: type === 'checkbox' ? checked : value
         }));
     }, []);
+
+    const handleScanComplete = (data) => {
+        setForm(prev => ({
+            ...prev,
+            amount: data.amount || prev.amount,
+            date: data.date || prev.date,
+            description: data.description || prev.description,
+        }));
+    };
 
     const closeWithAnimation = useCallback(() => {
         setClosing(true);
@@ -86,6 +96,10 @@ export default function TransactionModal({ isOpen, onClose, initialForm, handleS
                         </div>
 
                         <div className="modal-body p-4">
+                            {!editingId && (
+                                <ReceiptUpload onScanComplete={handleScanComplete} />
+                            )}
+
                             <form onSubmit={async (e) => { e.preventDefault(); await onSubmit(form); closeWithAnimation(); }} className="row g-3">
                                 <div className="col-md-6">
                                     <label className="form-label small fw-bold">Descrição *</label>
@@ -134,8 +148,6 @@ export default function TransactionModal({ isOpen, onClose, initialForm, handleS
                                         className="form-control"
                                     />
                                 </div>
-
-
 
                                 <div className="col-md-6">
                                     <label className="form-label small fw-bold">Categoria</label>
