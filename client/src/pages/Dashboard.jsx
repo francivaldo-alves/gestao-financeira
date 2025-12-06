@@ -233,7 +233,7 @@ const Dashboard = () => {
 
                 <SummaryCards balance={balance} totalIncome={totalIncome} totalExpense={totalExpense} />
 
-                <TopExpenses transactions={transactions} />
+
 
                 <TransactionModal
                     isOpen={isModalOpen}

@@ -3,6 +3,7 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import TopExpensesPage from './pages/TopExpensesPage';
 import { useContext } from 'react';
 
 const PrivateRoute = ({ children }) => {
@@ -25,6 +26,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/top-expenses"
+            element={
+              <PrivateRoute>
+                <TopExpensesPage />
               </PrivateRoute>
             }
           />
