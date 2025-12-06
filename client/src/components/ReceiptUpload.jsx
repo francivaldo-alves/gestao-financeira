@@ -5,11 +5,13 @@ import jsQR from 'jsqr';
 const ReceiptUpload = ({ onScanComplete }) => {
     const [scanning, setScanning] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [statusText, setStatusText] = useState('');
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
 
     const preprocessImage = (file) => {
         return new Promise((resolve, reject) => {
+            setStatusText('Processando imagem...');
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
@@ -21,6 +23,7 @@ const ReceiptUpload = ({ onScanComplete }) => {
                 let height = img.height;
 
                 if (width > MAX_WIDTH) {
+                    setStatusText('Redimensionando...');
                     height = (MAX_WIDTH / width) * height;
                     width = MAX_WIDTH;
                 }
@@ -32,17 +35,17 @@ const ReceiptUpload = ({ onScanComplete }) => {
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
                 // Try to read QR Code from the resized image
+                setStatusText('Verificando QR Code...');
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
                 let qrData = null;
                 if (code) {
                     console.log("QR Code Found:", code.data);
                     qrData = code.data;
-                } else {
-                    console.log("No QR Code found in image.");
                 }
 
                 const data = imageData.data;
                 // Grayscale & Contrast (for OCR)
+                setStatusText('Otimizando para leitura...');
                 for (let i = 0; i < data.length; i += 4) {
                     const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
                     // Increase contrast
@@ -69,18 +72,23 @@ const ReceiptUpload = ({ onScanComplete }) => {
 
         setScanning(true);
         setProgress(0);
+        setStatusText('Iniciando...');
 
         try {
             // Pre-process image and check for QR
             const { processedImage, qrData } = await preprocessImage(file);
 
+            setStatusText('Inicializando OCR (pode demorar)...');
             const result = await Tesseract.recognize(
                 processedImage,
                 'por',
                 {
                     logger: m => {
                         if (m.status === 'recognizing text') {
+                            setStatusText(`Lendo texto: ${Math.round(m.progress * 100)}%`);
                             setProgress(Math.round(m.progress * 100));
+                        } else {
+                            setStatusText(`Status: ${m.status}`);
                         }
                     }
                 }
@@ -88,12 +96,17 @@ const ReceiptUpload = ({ onScanComplete }) => {
 
             const text = result.data.text;
             console.log('OCR Result:', text);
+            setStatusText('Processando dados...');
             parseReceiptData(text, qrData);
         } catch (error) {
             console.error('OCR Error:', error);
-            alert('Erro ao ler a imagem. Tente novamente com uma imagem mais clara.');
+            alert(`Erro ao ler a imagem: ${error.message || error}`);
         } finally {
             setScanning(false);
+            setStatusText('');
+            // Reset inputs to allow selecting the same file again if needed
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            if (cameraInputRef.current) cameraInputRef.current.value = '';
         }
     };
 
@@ -270,9 +283,7 @@ const ReceiptUpload = ({ onScanComplete }) => {
 
             {scanning && (
                 <div className="text-center mt-2">
-                    <div className="text-center mt-2">
-                        <small className="text-muted">{statusText}</small>
-                    </div>
+                    <small className="text-muted">{statusText}</small>
                 </div>
             )}
         </div>
