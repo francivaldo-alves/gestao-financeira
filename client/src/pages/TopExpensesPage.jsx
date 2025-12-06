@@ -35,26 +35,25 @@ const TopExpensesPage = () => {
             <Navbar />
             <div className="container mt-4">
                 <div className="d-flex flex-column flex-md-row align-items-center justify-content-between mb-4 gap-3">
+                    <div>
+                        <h1 className="h3 fw-bold text-dark mb-0">Análise de Gastos</h1>
+                    </div>
+
                     <div className="d-flex align-items-center gap-3">
+                        <DateFilter
+                            currentMonth={currentMonth}
+                            currentYear={currentYear}
+                            onMonthChange={setCurrentMonth}
+                            onYearChange={setCurrentYear}
+                        />
                         <button
                             onClick={() => navigate('/')}
-                            className="btn btn-white border shadow-sm rounded-pill px-3 d-flex align-items-center gap-2 text-secondary fw-bold"
-                            style={{ transition: 'transform 0.2s' }}
-                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            className="btn btn-primary rounded-pill px-4 shadow-sm d-flex align-items-center gap-2"
                         >
                             <i className="bi bi-arrow-left"></i>
                             Voltar
                         </button>
-                        <h1 className="h3 fw-bold text-dark mb-0">Análise de Gastos</h1>
                     </div>
-
-                    <DateFilter
-                        currentMonth={currentMonth}
-                        currentYear={currentYear}
-                        onMonthChange={setCurrentMonth}
-                        onYearChange={setCurrentYear}
-                    />
                 </div>
 
                 {loading ? (
