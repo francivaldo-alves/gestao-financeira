@@ -38,10 +38,10 @@ const TopExpensesPage = () => {
                     <div className="d-flex align-items-center gap-3">
                         <button
                             onClick={() => navigate('/')}
-                            className="btn btn-outline-secondary rounded-circle p-2 d-flex align-items-center justify-content-center"
-                            style={{ width: '40px', height: '40px' }}
+                            className="btn btn-light shadow-sm rounded-pill px-3 d-flex align-items-center gap-2 text-primary fw-bold border"
                         >
                             <i className="bi bi-arrow-left"></i>
+                            Voltar
                         </button>
                         <h1 className="h3 fw-bold text-dark mb-0">Análise de Gastos</h1>
                     </div>
