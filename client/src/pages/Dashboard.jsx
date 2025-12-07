@@ -45,7 +45,9 @@ const Dashboard = () => {
             const response = await api.get('/transactions', {
                 params: { month: currentMonth, year: currentYear }
             });
-            setTransactions(response.data);
+            // Handle both old and new API response formats
+            const data = response.data.transactions || response.data;
+            setTransactions(data);
         } catch (error) {
             console.error('Erro ao buscar transações:', error);
             showToast('Erro ao carregar dados', 'error');
@@ -218,8 +220,33 @@ const Dashboard = () => {
                         />
                         <div className="d-flex gap-2 w-100 w-md-auto">
                             <button
+                                onClick={async () => {
+                                    try {
+                                        const response = await api.get('/transactions/export', {
+                                            params: { month: currentMonth, year: currentYear },
+                                            responseType: 'blob'
+                                        });
+                                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                                        const link = document.createElement('a');
+                                        link.href = url;
+                                        link.setAttribute('download', `transacoes_${currentMonth}_${currentYear}.csv`);
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        link.remove();
+                                        showToast('CSV exportado com sucesso!', 'success');
+                                    } catch (error) {
+                                        console.error('Erro ao exportar CSV:', error);
+                                        showToast('Erro ao exportar CSV', 'error');
+                                    }
+                                }}
+                                className="btn btn-outline-success rounded-pill px-4 shadow-sm flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center"
+                            >
+                                <i className="bi bi-download me-2"></i>
+                                Exportar CSV
+                            </button>
+                            <button
                                 onClick={() => window.location.href = '/maiores-gastos'}
-                                className="btn btn-outline-primary rounded-pill px-4 shadow-sm flex-fill flex-md-grow-0"
+                                className="btn btn-outline-primary rounded-pill px-4 shadow-sm flex-fill flex-md-grow-0 d-flex align-items-center justify-content-center"
                             >
                                 <i className="bi bi-graph-up me-2"></i>
                                 Ver Gráfico
@@ -230,7 +257,7 @@ const Dashboard = () => {
                                     setInitialFormData({ description: '', amount: '', type: 'expense', date: '', category: '', paymentMethod: '', note: '', isRecurring: false, recurrenceMonths: 12 });
                                     setIsModalOpen(true);
                                 }}
-                                className="btn btn-primary rounded-pill px-4 shadow-sm flex-fill flex-md-grow-0 text-nowrap"
+                                className="btn btn-primary rounded-pill px-4 shadow-sm flex-fill flex-md-grow-0 text-nowrap d-flex align-items-center justify-content-center"
                             >
                                 <i className="bi bi-plus-lg me-2"></i>
                                 Nova Transação
@@ -239,7 +266,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                <SummaryCards balance={balance} totalIncome={totalIncome} totalExpense={totalExpense} />
+                {!loading && <SummaryCards balance={balance} totalIncome={totalIncome} totalExpense={totalExpense} />}
 
                 <TransactionModal
                     isOpen={isModalOpen}

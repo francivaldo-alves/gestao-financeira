@@ -55,11 +55,42 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    installmentNumber: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    totalInstallments: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    installmentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     userId: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+  }, {
+    indexes: [
+      {
+        fields: ['userId']
+      },
+      {
+        fields: ['date']
+      },
+      {
+        fields: ['recurrenceId']
+      },
+      {
+        fields: ['installmentId']
+      },
+      {
+        fields: ['userId', 'date']
+      }
+    ]
   });
+
 
   Transaction.associate = (models) => {
     Transaction.belongsTo(models.User, {
@@ -70,3 +101,4 @@ module.exports = (sequelize, DataTypes) => {
 
   return Transaction;
 };
+

@@ -22,6 +22,9 @@ db.sequelize = sequelize;
 
 db.User = require('./User.js')(sequelize, Sequelize.DataTypes);
 db.Transaction = require('./Transaction.js')(sequelize, Sequelize.DataTypes);
+db.RefreshToken = require('./RefreshToken.js')(sequelize, Sequelize.DataTypes);
+db.Budget = require('./Budget.js')(sequelize, Sequelize.DataTypes);
+
 
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {

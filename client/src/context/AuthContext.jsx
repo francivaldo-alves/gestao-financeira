@@ -7,21 +7,58 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Setup axios interceptor for automatic token refresh
+    useEffect(() => {
+        const interceptor = api.interceptors.response.use(
+            (response) => response,
+            async (error) => {
+                const originalRequest = error.config;
+
+                // If error is 401 and we haven't retried yet
+                if (error.response?.status === 401 && !originalRequest._retry) {
+                    originalRequest._retry = true;
+
+                    const refreshToken = localStorage.getItem('refreshToken');
+                    if (refreshToken) {
+                        try {
+                            const response = await api.post('/auth/refresh', { refreshToken });
+                            const { token } = response.data;
+
+                            localStorage.setItem('token', token);
+                            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+
+                            return api(originalRequest);
+                        } catch (refreshError) {
+                            console.error("Refresh token inválido ou expirado");
+                            logout();
+                            return Promise.reject(refreshError);
+                        }
+                    }
+                }
+
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            api.interceptors.response.eject(interceptor);
+        };
+    }, []);
+
     useEffect(() => {
         const recoverUser = async () => {
             const token = localStorage.getItem('token');
 
             if (token) {
-                // 1. Configura o token no cabeçalho do Axios para requisições futuras
                 api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-                // 2. Tenta recuperar os dados do usuário
                 try {
                     const response = await api.get('/auth/me');
                     setUser(response.data);
                 } catch (error) {
                     console.error("Token inválido ou expirado");
-                    logout(); // Se o token for inválido, faz logout automático
+                    logout();
                 }
             }
 
@@ -34,15 +71,13 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         const response = await api.post('/auth/login', { email, password });
 
-        // Assumindo que o back retorna { token: '...', user: { name: '...', ... } }
-        const { token, user: userData } = response.data;
+        const { token, refreshToken, user: userData } = response.data;
 
         localStorage.setItem('token', token);
+        localStorage.setItem('refreshToken', refreshToken);
 
-        // IMPORTANTE: Atualiza o header do axios imediatamente
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        // Se o back não retornar o objeto 'user', usamos apenas o token
         setUser(userData || { token });
     };
 
@@ -50,12 +85,21 @@ export const AuthProvider = ({ children }) => {
         await api.post('/auth/register', { name, email, password });
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
+    const logout = async () => {
+        const refreshToken = localStorage.getItem('refreshToken');
 
-        // IMPORTANTE: Limpa o header do axios
+        try {
+            if (refreshToken) {
+                await api.post('/auth/logout', { refreshToken });
+            }
+        } catch (error) {
+            console.error("Erro ao revogar token:", error);
+        }
+
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+
         api.defaults.headers.common['Authorization'] = undefined;
-        // Ou: delete api.defaults.headers.common['Authorization'];
 
         setUser(null);
     };

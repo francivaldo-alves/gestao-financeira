@@ -1,0 +1,86 @@
+/* Mobile Responsive Improvements */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 1rem !important;
+    }
+
+    /* Improve button layout on mobile */
+    .btn-outline-success,
+    .btn-outline-primary,
+    .btn-primary {
+        font-size: 0.875rem !important;
+        padding: 0.5rem 1rem !important;
+    }
+
+    /* Better spacing for filter section */
+    .card-body.p-3.p-md-4 {
+        padding: 1rem !important;
+    }
+
+    /* Improve summary cards on mobile */
+    .row.g-3 {
+        gap: 0.75rem !important;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 576px) {
+
+    /* Stack buttons vertically with grid */
+    .d-flex.gap-2.w-100.w-md-auto {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        /* Two equal columns */
+        gap: 0.75rem !important;
+        width: 100% !important;
+    }
+
+    /* Make the buttons fill their grid cells */
+    .d-flex.gap-2.w-100.w-md-auto .btn {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+        /* Remove margin, use gap */
+    }
+
+    /* The "Nova Transação" button (3rd child) spans full width */
+    .d-flex.gap-2.w-100.w-md-auto .btn:last-child {
+        grid-column: 1 / -1;
+        /* Spans all columns */
+    }
+
+    /* Better select dropdowns */
+    select.form-select,
+    select.form-control {
+        font-size: 1rem !important;
+        padding: 0.75rem !important;
+    }
+
+    /* Reduce padding on cards */
+    .card-body {
+        padding: 0.75rem !important;
+    }
+
+    /* Better title sizing */
+    h1.display-6 {
+        font-size: 1.5rem !important;
+    }
+
+    /* Fix navbar on mobile */
+    .navbar {
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    .navbar-brand img {
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    .navbar-brand span {
+        font-size: 1.1rem !important;
+    }
+
+    /* Better transaction list on mobile */
+    .transaction-item {
+        padding: 0.75rem !important;
+    }
+}

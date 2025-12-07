@@ -1,0 +1,110 @@
+/* 
+ * Responsive Typography using Fluid Type
+ * Uses clamp() for smooth scaling between viewports
+ */
+
+:root {
+    /* Base font sizes */
+    --font-size-base: 1rem;
+    --font-size-sm: clamp(0.8rem, 0.75vw + 0.6rem, 0.875rem);
+    --font-size-md: clamp(1rem, 1vw + 0.75rem, 1.125rem);
+    --font-size-lg: clamp(1.125rem, 1.25vw + 0.8rem, 1.5rem);
+    --font-size-xl: clamp(1.5rem, 1.5vw + 1.125rem, 2rem);
+    --font-size-xxl: clamp(2rem, 2vw + 1.5rem, 3rem);
+
+    /* Headings */
+    --h1-size: var(--font-size-xxl);
+    --h2-size: var(--font-size-xl);
+    --h3-size: var(--font-size-lg);
+    --h4-size: var(--font-size-md);
+
+    /* Spacing */
+    --spacing-unit: clamp(0.5rem, 1vw + 0.25rem, 1rem);
+}
+
+/* Apply fluid typography to elements */
+
+html {
+    font-size: 16px;
+    /* Base size */
+}
+
+@media (max-width: 576px) {
+    html {
+        font-size: 14px;
+        /* Slightly smaller on very small screens */
+    }
+}
+
+body {
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+}
+
+h1,
+.h1 {
+    font-size: var(--h1-size) !important;
+}
+
+h2,
+.h2 {
+    font-size: var(--h2-size) !important;
+}
+
+h3,
+.h3 {
+    font-size: var(--h3-size) !important;
+}
+
+h4,
+.h4 {
+    font-size: var(--h4-size) !important;
+}
+
+/* Responsive text classes */
+.text-responsive-base {
+    font-size: var(--font-size-base) !important;
+}
+
+.text-responsive-sm {
+    font-size: var(--font-size-sm) !important;
+}
+
+.text-responsive-lg {
+    font-size: var(--font-size-lg) !important;
+}
+
+/* Specific Component Improvements */
+
+/* Card Values */
+.card h2 {
+    font-size: clamp(1.5rem, 4vw, 2.5rem) !important;
+}
+
+/* Modal Titles */
+.modal-title {
+    font-size: clamp(1.25rem, 3vw, 1.75rem) !important;
+}
+
+/* Table Text */
+.table {
+    font-size: var(--font-size-sm);
+}
+
+/* Transaction List Items */
+.transaction-amount {
+    font-size: var(--font-size-md);
+}
+
+.transaction-description {
+    font-size: var(--font-size-base);
+}
+
+.transaction-date {
+    font-size: var(--font-size-sm);
+}
+
+/* Buttons */
+.btn {
+    font-size: var(--font-size-sm);
+}

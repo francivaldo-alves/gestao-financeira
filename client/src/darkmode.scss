@@ -1,0 +1,233 @@
+/* 
+ * Professional Dark Mode - UX/UI Optimized
+ * Following WCAG 2.1 AAA contrast guidelines
+ */
+
+[data-theme="dark"] {
+
+    /* ========================================
+     GLOBAL RESETS & VARS
+     ======================================== */
+    --card-bg: #2d3139;
+    --bg-color: #1a1d23;
+    --text-color: #e4e6eb;
+    --border-color: #3a3f4b;
+    --input-bg: #374151;
+
+    .bg-white {
+        background-color: var(--card-bg) !important;
+        color: var(--text-color) !important;
+    }
+
+    .shadow-sm {
+        box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .5) !important;
+    }
+
+    /* ========================================
+     CARDS - Summary Cards
+     ======================================== */
+
+    .card,
+    .list-group-item {
+        background-color: var(--card-bg) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-color) !important;
+    }
+
+    /* Card headers */
+    .card h6.text-muted,
+    .card .text-uppercase.text-muted {
+        color: #b0b3b8 !important;
+        opacity: 1 !important;
+        font-weight: 600 !important;
+    }
+
+    /* Card values */
+    .card h2.text-dark {
+        color: #e4e6eb !important;
+    }
+
+    .card h2.text-success {
+        color: #4ade80 !important;
+    }
+
+    .card h2.text-danger {
+        color: #f87171 !important;
+    }
+
+    /* Icon containers - Make them semi-transparent but colored */
+    .bg-primary-subtle {
+        background-color: rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .bg-success-subtle {
+        background-color: rgba(16, 185, 129, 0.2) !important;
+    }
+
+    .bg-danger-subtle {
+        background-color: rgba(239, 68, 68, 0.2) !important;
+    }
+
+    .bg-warning-subtle {
+        background-color: rgba(245, 158, 11, 0.2) !important;
+    }
+
+    .bg-info-subtle {
+        background-color: rgba(6, 182, 212, 0.2) !important;
+    }
+
+    .bg-secondary-subtle {
+        background-color: rgba(107, 114, 128, 0.2) !important;
+    }
+
+    /* SVG Icons - Force visibility */
+    .text-primary svg,
+    .bg-primary-subtle svg {
+        stroke: #60a5fa !important;
+    }
+
+    .text-success svg,
+    .bg-success-subtle svg {
+        stroke: #4ade80 !important;
+    }
+
+    .text-danger svg,
+    .bg-danger-subtle svg {
+        stroke: #f87171 !important;
+    }
+
+    /* Generic SVG rule as fallback */
+    svg {
+        fill: none;
+    }
+
+    /* ========================================
+     TRANSACTION ITEMS
+     ======================================== */
+
+    .list-group-item {
+        background-color: var(--card-bg) !important;
+    }
+
+    /* Fix faint text in transaction items */
+    .list-group-item .fw-bold.text-dark {
+        color: #e4e6eb !important;
+    }
+
+    .list-group-item .text-muted.small {
+        color: #9ca3af !important;
+    }
+
+    /* Icons in transaction list */
+    .rounded-circle.bg-success-subtle svg {
+        stroke: #4ade80 !important;
+    }
+
+    .rounded-circle.bg-danger-subtle svg {
+        stroke: #f87171 !important;
+    }
+
+    /* ========================================
+     BADGES & BUTTONS
+     ======================================== */
+
+    .badge {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-outline-secondary {
+        color: #e4e6eb !important;
+        /* Lighter text (was #9ca3af) */
+        border-color: #6b7280 !important;
+        /* Lighter border (was #4b5563) */
+        background-color: transparent !important;
+    }
+
+    .btn-outline-secondary:hover {
+        color: #fff !important;
+        background-color: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+
+    /* ========================================
+     FORM ELEMENTS
+     ======================================== */
+
+    .form-check-input {
+        background-color: var(--input-bg) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    .form-check-input:checked {
+        background-color: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+    }
+
+    .form-check-label {
+        color: var(--text-color) !important;
+    }
+
+    .form-select,
+    .form-control {
+        background-color: var(--input-bg) !important;
+        color: var(--text-color) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    /* Glassmorphic Modal Backdrop */
+    .modal-backdrop.show {
+        opacity: 0.7 !important;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+    }
+
+    /* Fix Browser Autofill Background */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px var(--input-bg) inset !important;
+        -webkit-text-fill-color: var(--text-color) !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+
+    /* Fix Filter Bar Toggles */
+    .bg-white .form-check-label.text-muted {
+        color: #d1d5db !important;
+        /* Lighter grey for readability */
+    }
+
+    .bg-white .vr {
+        background-color: #4b5563 !important;
+        opacity: 1 !important;
+    }
+
+    /* ========================================
+     NAVBAR & GLOBAL
+     ======================================== */
+
+    .navbar {
+        background-color: #2d3139 !important;
+        border-bottom: 1px solid #3a3f4b !important;
+    }
+
+    .navbar-brand,
+    .nav-link {
+        color: #e4e6eb !important;
+    }
+
+    .bg-light {
+        background-color: var(--bg-color) !important;
+    }
+
+    body,
+    .min-vh-100 {
+        background-color: var(--bg-color) !important;
+        color: var(--text-color) !important;
+    }
+
+    /* Bootstrap Icons */
+    .bi {
+        color: currentColor !important;
+    }
+}

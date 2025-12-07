@@ -18,7 +18,8 @@ const TopExpensesPage = () => {
             const response = await api.get('/transactions', {
                 params: { month: currentMonth, year: currentYear }
             });
-            setTransactions(response.data);
+            const data = response.data.transactions || response.data;
+            setTransactions(data);
         } catch (error) {
             console.error('Erro ao buscar transações:', error);
         } finally {

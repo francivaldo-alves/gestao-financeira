@@ -197,7 +197,24 @@ export default function TransactionModal({ isOpen, onClose, initialForm, handleS
                                             />
                                         </div>
                                     )}
+
+                                    {form.installments && (
+                                        <div className="d-flex align-items-center gap-2 ms-auto">
+                                            <span className="small">Parcelas</span>
+                                            <input
+                                                type="number"
+                                                name="totalInstallments"
+                                                value={form.totalInstallments || 2}
+                                                onChange={handleInputChange}
+                                                min={2}
+                                                max={48}
+                                                className="form-control form-control-sm"
+                                                style={{ width: '80px' }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
+
 
                                 <div className="col-12">
                                     <label className="form-label small fw-bold">Observações (opcional)</label>

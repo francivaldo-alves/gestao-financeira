@@ -13,7 +13,7 @@ router.use(auth);
 // Get all transactions
 router.get("/", async (req, res) => {
   try {
-    const { type, month, year } = req.query;
+    const { type, month, year, page = 1, limit = 50 } = req.query;
     const where = { userId: req.user.id };
 
     if (type) {
@@ -39,15 +39,29 @@ router.get("/", async (req, res) => {
       };
     }
 
-    const transactions = await Transaction.findAll({
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const { count, rows: transactions } = await Transaction.findAndCountAll({
       where,
       order: [["date", "DESC"]],
+      limit: parseInt(limit),
+      offset: offset,
     });
-    res.json(transactions);
+
+    res.json({
+      transactions,
+      pagination: {
+        total: count,
+        totalPages: Math.ceil(count / parseInt(limit)),
+        currentPage: parseInt(page),
+        limit: parseInt(limit),
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Create transaction
 router.post("/", transactionValidation, validate, async (req, res) => {
@@ -61,13 +75,47 @@ router.post("/", transactionValidation, validate, async (req, res) => {
       paymentMethod,
       note,
       isRecurring,
+      installments,
     } = req.body;
 
-    // Se for recorrente, gerar um recurrenceId e criar múltiplos lançamentos
-    const recurrenceMonths = parseInt(req.body.recurrenceMonths) || 12;
     const baseDate = date ? new Date(date) : new Date();
 
+    // Handle installments
+    if (installments && req.body.totalInstallments > 1) {
+      const totalInstallments = parseInt(req.body.totalInstallments);
+      const installmentId = randomUUID();
+      const installmentAmount = parseFloat(amount) / totalInstallments;
+
+      const installmentTransactions = [];
+      for (let i = 0; i < totalInstallments; i++) {
+        const installmentDate = new Date(baseDate);
+        installmentDate.setMonth(installmentDate.getMonth() + i);
+
+        installmentTransactions.push({
+          type,
+          amount: installmentAmount,
+          description: `${description} (${i + 1}/${totalInstallments})`,
+          date: installmentDate,
+          category: category || null,
+          paymentMethod: paymentMethod || null,
+          note: note || null,
+          installmentNumber: i + 1,
+          totalInstallments,
+          installmentId,
+          userId: req.user.id,
+        });
+      }
+
+      await Transaction.bulkCreate(installmentTransactions);
+
+      return res
+        .status(201)
+        .json({ message: "Transações parceladas criadas.", installmentId });
+    }
+
+    // Handle recurring transactions
     if (isRecurring) {
+      const recurrenceMonths = parseInt(req.body.recurrenceMonths) || 12;
       const recurrenceId = randomUUID();
 
       // Criar o lançamento atual com recurrenceId
@@ -113,6 +161,7 @@ router.post("/", transactionValidation, validate, async (req, res) => {
         .json({ message: "Transações recorrentes criadas.", recurrenceId });
     }
 
+    // Single transaction
     const transaction = await Transaction.create({
       type,
       amount,
@@ -130,6 +179,7 @@ router.post("/", transactionValidation, validate, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Update transaction
 router.put("/:id", transactionUpdateValidation, validate, async (req, res) => {
@@ -254,4 +304,56 @@ router.put("/recurrence/:recurrenceId/complete", async (req, res) => {
   }
 });
 
+// Export transactions as CSV
+router.get("/export", async (req, res) => {
+  try {
+    const { type, month, year } = req.query;
+    const where = { userId: req.user.id };
+
+    if (type) {
+      where.type = type;
+    }
+
+    if (month && year) {
+      let startDate, endDate;
+
+      if (month === 'all') {
+        startDate = new Date(year, 0, 1);
+        endDate = new Date(parseInt(year) + 1, 0, 1);
+      } else {
+        startDate = new Date(year, month - 1, 1);
+        endDate = new Date(year, month, 1);
+      }
+
+      where.date = {
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
+      };
+    }
+
+    const transactions = await Transaction.findAll({
+      where,
+      order: [["date", "DESC"]],
+    });
+
+    // Convert to CSV format
+    const csvHeader = "Data,Descrição,Tipo,Valor,Categoria,Forma de Pagamento,Observações\n";
+    const csvRows = transactions.map(t => {
+      const date = new Date(t.date).toLocaleDateString('pt-BR');
+      const type = t.type === 'income' ? 'Receita' : 'Despesa';
+      const amount = t.amount.toFixed(2).replace('.', ',');
+      return `${date},"${t.description}",${type},${amount},"${t.category || ''}","${t.paymentMethod || ''}","${t.note || ''}"`;
+    }).join('\n');
+
+    const csv = csvHeader + csvRows;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=transacoes_${month || 'todas'}_${year || new Date().getFullYear()}.csv`);
+    res.send('\uFEFF' + csv); // BOM for Excel UTF-8 support
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
+

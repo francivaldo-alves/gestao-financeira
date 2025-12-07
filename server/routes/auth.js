@@ -59,12 +59,27 @@ router.post("/login", loginValidation, validate, async (req, res) => {
       return res.status(400).json({ error: "E-mail ou senha inválidos." });
     }
 
+    // Generate access token (15 minutes)
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "15m",
+    });
+
+    // Generate refresh token (7 days)
+    const refreshToken = jwt.sign({ id: user.id, type: 'refresh' }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Save refresh token to database
+    const { RefreshToken } = require("../models");
+    await RefreshToken.create({
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     });
 
     res.json({
       token,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
@@ -75,6 +90,7 @@ router.post("/login", loginValidation, validate, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Esqueci minha senha
 router.post('/forgot-password', forgotPasswordValidation, validate, async (req, res) => {
@@ -198,4 +214,73 @@ router.post("/google", async (req, res) => {
   }
 });
 
+// Refresh token route
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token não fornecido' });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+
+    // Check if token exists and is not revoked
+    const { RefreshToken } = require("../models");
+    const storedToken = await RefreshToken.findOne({
+      where: {
+        token: refreshToken,
+        userId: decoded.id,
+        isRevoked: false,
+      }
+    });
+
+    if (!storedToken) {
+      return res.status(401).json({ error: 'Refresh token inválido ou revogado' });
+    }
+
+    // Check if token is expired
+    if (new Date() > storedToken.expiresAt) {
+      return res.status(401).json({ error: 'Refresh token expirado' });
+    }
+
+    // Generate new access token
+    const newAccessToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
+      expiresIn: "15m",
+    });
+
+    res.json({
+      token: newAccessToken,
+    });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(401).json({ error: 'Refresh token inválido' });
+  }
+});
+
+// Logout route (revoke refresh token)
+router.post('/logout', auth, async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (refreshToken) {
+      const { RefreshToken } = require("../models");
+      await RefreshToken.update(
+        { isRevoked: true },
+        { where: { token: refreshToken, userId: req.user.id } }
+      );
+    }
+
+    res.json({ message: 'Logout realizado com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao fazer logout' });
+  }
+});
+
 module.exports = router;
+

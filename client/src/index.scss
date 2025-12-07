@@ -1,3 +1,7 @@
+@import './mobile.scss';
+@import './darkmode.scss';
+@import './typography.scss';
+
 :root {
   --primary-color: #4a90e2;
   --secondary-color: #f5f6fa;
@@ -5,14 +9,61 @@
   --success-color: #2ecc71;
   --danger-color: #e74c3c;
   --card-bg: #ffffff;
+  --bg-color: #f5f6fa;
+  --border-color: #e1e8ed;
+  --input-bg: #ffffff;
+  --navbar-bg: #ffffff;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+  --primary-color: #5da3f5;
+  --secondary-color: #1a1d23;
+  --text-color: #e4e6eb;
+  --success-color: #3dd179;
+  --danger-color: #f56565;
+  --card-bg: #242830;
+  --bg-color: #1a1d23;
+  --border-color: #3a3f4b;
+  --input-bg: #2d3139;
+  --navbar-bg: #242830;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--secondary-color);
+  background-color: var(--bg-color);
   color: var(--text-color);
   margin: 0;
   padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8);
 }
 
 /* Layout Containers - Preserved for structure */
@@ -22,7 +73,7 @@ body {
   padding: 2rem;
   background: var(--card-bg);
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
   text-align: center;
 }
 
@@ -35,7 +86,35 @@ body {
 /* Bootstrap Overrides or Helpers if needed */
 .card {
   border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.form-control,
+.form-select {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border-color: var(--primary-color);
+}
+
+.modal-content {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+}
+
+.modal-header {
+  border-bottom-color: var(--border-color);
+}
+
+.modal-footer {
+  border-top-color: var(--border-color);
 }
 
 /* Ensure modal is above everything */
@@ -45,4 +124,125 @@ body {
 
 .modal {
   z-index: 1050;
+}
+
+/* Text colors */
+.text-muted {
+  color: var(--text-color) !important;
+  opacity: 0.7;
+}
+
+[data-theme="dark"] .bg-light {
+  background-color: var(--secondary-color) !important;
+}
+
+/* Dark Mode Text Color Fixes */
+[data-theme="dark"] {
+
+  /* Force all text elements to use theme color */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  div,
+  label,
+  a,
+  .text-dark,
+  .text-muted,
+  .fw-bold,
+  .display-6 {
+    color: var(--text-color) !important;
+  }
+
+  /* Fix Bootstrap text utilities */
+  .text-muted {
+    color: rgba(228, 230, 235, 0.7) !important;
+  }
+
+  /* Fix card text */
+  .card-title,
+  .card-text {
+    color: var(--text-color) !important;
+  }
+
+  /* Fix form labels and inputs */
+  .form-label,
+  .form-control,
+  .form-select {
+    color: var(--text-color) !important;
+  }
+
+  /* Fix buttons text */
+  .btn {
+    color: inherit;
+  }
+
+  /* Fix navbar text */
+  .navbar,
+  .navbar-brand,
+  .nav-link {
+    color: var(--text-color) !important;
+  }
+
+  /* Fix table text */
+  table,
+  th,
+  td {
+    color: var(--text-color) !important;
+  }
+
+  /* Fix modal text */
+  .modal-title,
+  .modal-body {
+    color: var(--text-color) !important;
+  }
+
+  /* Fix list items */
+  li {
+    color: var(--text-color) !important;
+  }
+}
+
+/* Skeleton Loaders */
+.skeleton-card {
+  background: linear-gradient(90deg,
+      var(--card-bg) 0%,
+      var(--border-color) 50%,
+      var(--card-bg) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-transaction-item {
+  padding: 1rem;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }

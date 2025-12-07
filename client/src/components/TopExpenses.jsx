@@ -1,7 +1,18 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, LabelList } from 'recharts';
+import { ThemeContext } from '../context/ThemeContext';
 
 const TopExpenses = ({ transactions }) => {
+    const { theme } = React.useContext(ThemeContext);
+    const isDark = theme === 'dark';
+
+    // Chart colors based on theme
+    const axisColor = isDark ? '#adb5bd' : '#6c757d';
+    const gridColor = isDark ? '#3a3f4b' : '#e0e0e0';
+    const tooltipBg = isDark ? '#2d3139' : '#ffffff';
+    const tooltipColor = isDark ? '#e4e6eb' : '#000000';
+    const tooltipBorder = isDark ? '1px solid #3a3f4b' : 'none';
+
     // Filtrar apenas despesas
     const expenses = transactions.filter(t => t.type === 'expense');
 
@@ -32,10 +43,10 @@ const TopExpenses = ({ transactions }) => {
                                 data={topExpenses}
                                 margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                             >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
                                 <XAxis
                                     dataKey="name"
-                                    tick={{ fontSize: 12, fill: '#6c757d' }}
+                                    tick={{ fontSize: 12, fill: axisColor }}
                                     axisLine={false}
                                     tickLine={false}
                                     interval={0}
@@ -46,9 +57,17 @@ const TopExpenses = ({ transactions }) => {
                                 />
                                 <YAxis hide />
                                 <Tooltip
-                                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
+                                    contentStyle={{
+                                        borderRadius: '8px',
+                                        border: tooltipBorder,
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                        backgroundColor: tooltipBg,
+                                        color: tooltipColor
+                                    }}
+                                    itemStyle={{ color: tooltipColor }}
                                     formatter={(value) => [`R$ ${value.toFixed(2)}`, 'Valor']}
+                                    labelStyle={{ color: axisColor }}
                                 />
                                 <Bar dataKey="amount" radius={[8, 8, 0, 0]} maxBarSize={60}>
                                     {topExpenses.map((entry, index) => (
@@ -58,7 +77,7 @@ const TopExpenses = ({ transactions }) => {
                                         dataKey="amount"
                                         position="top"
                                         formatter={(value) => `R$ ${value}`}
-                                        style={{ fill: '#6c757d', fontSize: '12px', fontWeight: 'bold' }}
+                                        style={{ fill: axisColor, fontSize: '12px', fontWeight: 'bold' }}
                                     />
                                 </Bar>
                             </BarChart>
